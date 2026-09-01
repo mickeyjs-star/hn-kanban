@@ -270,6 +270,10 @@ tfoot td{font-weight:700;background:#fafbfd;border-top:2px solid var(--line);bor
       <span class="rmrow-l" style="margin-left:14px;padding-left:14px;border-left:1px solid var(--line)">车系</span>
       <div class="rmbtns" id="seBtns"></div>
     </div>
+    <div class="rmrow" id="modelRow" style="margin-top:6px">
+      <span class="rmrow-l" style="margin-left:14px;padding-left:14px;border-left:1px solid var(--line)">车型</span>
+      <div class="rmbtns" id="modelBtns"></div>
+    </div>
   </div>
 
   <div class="kpis" id="kpis"></div>
@@ -412,8 +416,9 @@ const ST = {
   mode: 'range',
   d1: DMAX.slice(0, 8) + '01', d2: DMAX,   // 默认：本月1日 ~ 最新数据日
   rm: new Set(DATA.managers),
-  se: new Set(DATA.series),
+  se: new Set(),                         // 由下方 SERIES_VIEW 初始化（车系归一化后）
   seg: new Set(),
+  ml: null,                              // 车型单选：null=未选（全部）；有值=只看该车型（与 seg 互斥）
   sto: new Set(),                       // 门店筛选：选中的门店 idx 集合（空=全部门店）
   storeQ: '',                           // 门店搜索关键词（空=不过滤），按名称/编码/城市匹配
   mm: new Set(DATA.mm_managers),        // 新媒体经理筛选（默认全选）
@@ -427,21 +432,32 @@ const ST = {
   hidden: new Set()
 };
 
-/* ========= 车系分组（A/B/C/D 系 + 其他） ========= */
+/* ========= 车系合并与分组（A/B/C/D 系 + 其他） ========= */
+// 车系归一化：增程车型并入基础车型；S01/T03 并入「其他」
+const SERIES_MERGE = {
+  'C01增程': 'C01', 'C10增程': 'C10', 'C11增程': 'C11', 'C16增程': 'C16',
+  'D19增程': 'D19', 'D99增程': 'D99', 'S01': '其他', 'T03': '其他'
+};
+function normSeries(s) { return SERIES_MERGE[s] || s; }
+// 合并后的车系显示列表（去重，保持 DATA.series 顺序）
+const SERIES_VIEW = [];
+DATA.series.forEach(s => { const n = normSeries(s); if (!SERIES_VIEW.includes(n)) SERIES_VIEW.push(n); });
+ST.se = new Set(SERIES_VIEW);
 const SERIES_GROUPS = [
   { key: 'A', name: 'A系', items: ['A05', 'A10'] },
   { key: 'B', name: 'B系', items: ['B01', 'B10', 'Lafa5', 'Lafa5 Ultra'] },
-  { key: 'C', name: 'C系', items: ['C01', 'C01增程', 'C10', 'C10增程', 'C11', 'C11增程', 'C16', 'C16增程'] },
-  { key: 'D', name: 'D系', items: ['D19', 'D19增程', 'D99', 'D99增程'] },
-  { key: 'O', name: '其他', items: ['S01', 'T03', '其他'] },
+  { key: 'C', name: 'C系', items: ['C01', 'C10', 'C11', 'C16'] },
+  { key: 'D', name: 'D系', items: ['D19', 'D99'] },
+  { key: 'O', name: '其他', items: ['其他'] },
 ];
-// 由选中的车系分组推导 ST.se（空 = 全部车系）
+// 由选中的车系分组/车型推导 ST.se（车型单选优先；空 = 全部车系）
 function applySeriesGroups() {
-  if (ST.seg.size === 0) { ST.se = new Set(DATA.series); return; }
+  if (ST.ml) { ST.se = new Set([ST.ml]); return; }
+  if (ST.seg.size === 0) { ST.se = new Set(SERIES_VIEW); return; }
   const set = new Set();
   for (const k of ST.seg) {
     const g = SERIES_GROUPS.find(x => x.key === k);
-    if (g) g.items.forEach(s => set.add(s));
+    if (g) g.items.forEach(s => set.add(normSeries(s)));
   }
   ST.se = set;
 }
@@ -450,7 +466,7 @@ function applySeriesGroups() {
 const _cache = new Map();
 function fkey() {
   return (ST.rm.size === DATA.managers.length ? '*' : [...ST.rm].sort().join('|')) + '#' +
-         (ST.se.size === DATA.series.length ? '*' : [...ST.se].sort().join('|'));
+         (ST.se.size === SERIES_VIEW.length ? '*' : [...ST.se].sort().join('|'));
 }
 // 华南：某快照日的累计值（已按 经理/车系/门店/新媒体经理/市场经理 过滤）
 function snapHN(dt) {
@@ -465,7 +481,7 @@ function snapHN(dt) {
   if (_cache.has(k)) return _cache.get(k);
   const out = new Array(VLEN).fill(0);
   const okM = ST.rm.size === DATA.managers.length ? null : ST.rm;
-  const okS = ST.se.size === DATA.series.length ? null : ST.se;
+  const okS = ST.se.size === SERIES_VIEW.length ? null : ST.se;
   const okMM = mmOn ? ST.mm : null;
   const okAM = amOn ? ST.am : null;
   const rows = scoped ? DATA.hs[dt] : DATA.hn[dt];
@@ -477,10 +493,10 @@ function snapHN(dt) {
         if (okMM && !okMM.has(DATA.stores[si][7])) continue;   // 新媒体经理
         if (okAM && !okAM.has(DATA.stores[si][8])) continue;   // 市场经理
         if (okM && !okM.has(DATA.stores[si][5])) continue;     // 零售经理
-        if (okS && !okS.has(DATA.series[r[1]])) continue;
+        if (okS && !okS.has(normSeries(DATA.series[r[1]]))) continue;
       } else {
         if (okM && !okM.has(DATA.managers[r[0]])) continue;   // hn 行：经理 idx + 车系 idx
-        if (okS && !okS.has(DATA.series[r[1]])) continue;
+        if (okS && !okS.has(normSeries(DATA.series[r[1]]))) continue;
       }
       for (let i = 2; i < r.length; i++) out[i - 2] += r[i];
     }
@@ -489,14 +505,14 @@ function snapHN(dt) {
 }
 // 全国：某快照日的累计值（只按车系过滤，不按经理）
 function snapCN(dt) {
-  const k = 'c' + dt + (ST.se.size === DATA.series.length ? '*' : [...ST.se].sort().join('|'));
+  const k = 'c' + dt + (ST.se.size === SERIES_VIEW.length ? '*' : [...ST.se].sort().join('|'));
   if (_cache.has(k)) return _cache.get(k);
   const out = new Array(VLEN).fill(0);
   const rows = DATA.cn[dt];
   if (rows) {
-    const okS = ST.se.size === DATA.series.length ? null : ST.se;
+    const okS = ST.se.size === SERIES_VIEW.length ? null : ST.se;
     for (const r of rows) {
-      if (okS && !okS.has(DATA.series[r[0]])) continue;
+      if (okS && !okS.has(normSeries(DATA.series[r[0]]))) continue;
       for (let i = 1; i < r.length; i++) out[i - 1] += r[i];
     }
   }
@@ -504,14 +520,14 @@ function snapCN(dt) {
 }
 // 华南整体（忽略经理筛选，仅车系）—— 用于「占华南」参考
 function snapHNAll(dt) {
-  const k = 'a' + dt + (ST.se.size === DATA.series.length ? '*' : [...ST.se].sort().join('|'));
+  const k = 'a' + dt + (ST.se.size === SERIES_VIEW.length ? '*' : [...ST.se].sort().join('|'));
   if (_cache.has(k)) return _cache.get(k);
   const out = new Array(VLEN).fill(0);
   const rows = DATA.hn[dt];
   if (rows) {
-    const okS = ST.se.size === DATA.series.length ? null : ST.se;
+    const okS = ST.se.size === SERIES_VIEW.length ? null : ST.se;
     for (const r of rows) {
-      if (okS && !okS.has(DATA.series[r[1]])) continue;
+      if (okS && !okS.has(normSeries(DATA.series[r[1]]))) continue;
       for (let i = 2; i < r.length; i++) out[i - 2] += r[i];
     }
   }
@@ -529,7 +545,7 @@ function snapStoreMap(dt) {
   const rows = DATA.hs[dt];
   if (rows) {
     const okM = ST.rm.size === DATA.managers.length ? null : ST.rm;
-    const okS = ST.se.size === DATA.series.length ? null : ST.se;
+    const okS = ST.se.size === SERIES_VIEW.length ? null : ST.se;
     const okMM = ST.mm.size < DATA.mm_managers.length ? ST.mm : null;
     const okAM = ST.am.size < DATA.am_managers.length ? ST.am : null;
     for (const r of rows) {
@@ -538,7 +554,7 @@ function snapStoreMap(dt) {
       if (okMM && !okMM.has(DATA.stores[si][7])) continue;  // 新媒体经理
       if (okAM && !okAM.has(DATA.stores[si][8])) continue;  // 市场经理
       if (okM && !okM.has(DATA.stores[si][5])) continue;    // 零售经理
-      if (okS && !okS.has(DATA.series[r[1]])) continue;     // 车系
+      if (okS && !okS.has(normSeries(DATA.series[r[1]]))) continue;     // 车系
       let v = out.get(si);
       if (!v) { v = new Array(VLEN).fill(0); out.set(si, v); }
       for (let i = 2; i < r.length; i++) v[i - 2] += r[i];
@@ -1118,7 +1134,8 @@ function renderStoreChannel(curSM, prevSM, cnCur, baseSM, curDays, baseDays) {
   if (ST.am.size < DATA.am_managers.length) scope += ' · 市场 ' + [...ST.am].join('、');
   if (ST.sto.size) scope += ' · 已选 ' + ST.sto.size + ' 家门店';
   if (ST.storeQ) scope += ' · 搜索「' + ST.storeQ + '」';
-  if (ST.seg.size) scope += ' · ' + SERIES_GROUPS.filter(g => ST.seg.has(g.key)).map(g => g.name).join('/');
+  if (ST.ml) scope += ' · 车型 ' + ST.ml;
+  if (!ST.ml && ST.seg.size) scope += ' · ' + SERIES_GROUPS.filter(g => ST.seg.has(g.key)).map(g => g.name).join('/');
   $('#scScope').textContent = '· ' + scope + ' · ' + stores.length + ' 店 × ' + chans.length + ' 渠道';
   if (ST.scMode === 'list') {
     $('#scListWrap').style.display = ''; $('#scMatWrap').style.display = 'none'; $('#selSCm').style.display = 'none';
@@ -1233,7 +1250,8 @@ function render() {
   const base = B ? rangeVal(B.lo, B.hi, snapHN) : null;
 
   const rmTxt = ST.rm.size === DATA.managers.length ? '全部经理' : (ST.rm.size ? [...ST.rm].join('、') : '未选经理');
-  const seTxt = (ST.seg.size === 0 || ST.seg.size === SERIES_GROUPS.length) ? '全部车系'
+  const seTxt = ST.ml ? ('车型 ' + ST.ml)
+    : (ST.seg.size === 0 || ST.seg.size === SERIES_GROUPS.length) ? '全部车系'
     : SERIES_GROUPS.filter(g => ST.seg.has(g.key)).map(g => g.name).join('/');
   const stoTxt = ST.sto.size === 0 ? '全部门店' : ('已选 ' + ST.sto.size + ' 家门店');
   const mmTxt = ST.mm.size === DATA.mm_managers.length ? '' : ('新媒体 ' + [...ST.mm].join('、'));
@@ -1282,6 +1300,7 @@ function render() {
 /* ========= 事件绑定 ========= */
 buildRM();
 buildSE();
+buildModelBtns();
 buildStoreFilter();
   buildMM();
   buildAM();
@@ -1320,15 +1339,38 @@ function buildSE() {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.all) ST.seg = new Set();
     else { const k = b.dataset.g; if (ST.seg.has(k)) ST.seg.delete(k); else ST.seg.add(k); }
-    _cache.clear(); applySeriesGroups(); syncSE(); render();
+    ST.ml = null;                       // 与车型筛选互斥：点分组清空车型
+    _cache.clear(); applySeriesGroups(); syncSE(); syncModelBtns(); render();
   };
   syncSE();
 }
+// 车型单选（13个合并后车型），与车系分组互斥
+function buildModelBtns() {
+  const box = $('#modelBtns');
+  let h = '<button class="rm-btn" data-all="1">全部车型</button>';
+  SERIES_VIEW.forEach(s => { h += '<button class="rm-btn" data-m="' + s + '">' + s + '</button>'; });
+  box.innerHTML = h;
+  box.onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.all) ST.ml = null;
+    else ST.ml = (ST.ml === b.dataset.m) ? null : b.dataset.m;   // 单选，再点取消
+    ST.seg = new Set();                 // 与分组互斥：点车型清空分组
+    _cache.clear(); applySeriesGroups(); syncSE(); syncModelBtns(); render();
+  };
+  syncModelBtns();
+}
 function syncSE() {
-  const all = ST.seg.size === 0;
+  const inModel = !!ST.ml;
+  const all = !inModel && ST.seg.size === 0;
   $('#seBtns').querySelectorAll('.rm-btn').forEach(b => {
     if (b.dataset.all) b.classList.toggle('on', all);
-    else b.classList.toggle('on', !all && ST.seg.has(b.dataset.g));
+    else b.classList.toggle('on', !inModel && !all && ST.seg.has(b.dataset.g));
+  });
+}
+function syncModelBtns() {
+  $('#modelBtns').querySelectorAll('.rm-btn').forEach(b => {
+    if (b.dataset.all) b.classList.toggle('on', !ST.ml);
+    else b.classList.toggle('on', ST.ml === b.dataset.m);
   });
 }
 // 门店维度筛选：可搜索 + 多选下拉；随「零售经理」筛选收窄可选门店
