@@ -217,10 +217,6 @@ tfoot td{font-weight:700;background:#fafbfd;border-top:2px solid var(--line);bor
 .nat-tw tr:nth-child(even){background:#fafbfd}
 .nat-tw .c{text-align:center;color:var(--t3)}
 .nat-tw .nm{font-weight:600}
-.nat-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700}
-.nat-badge.hot{background:#fee2e2;color:#dc2626}
-.nat-badge.good{background:#dcfce7;color:#16a34a}
-.nat-badge.flat{background:#f1f5f9;color:#64748b}
 .nat-foot{color:var(--t3);font-size:11px;margin-top:14px;line-height:1.7}
 </style>
 <script src="vendor/html2canvas.min.js"></script>
@@ -294,9 +290,6 @@ tfoot td{font-weight:700;background:#fafbfd;border-top:2px solid var(--line);bor
         <label>市场活动经理</label>
         <div class="rmbtns" id="amBtns"></div>
       </div>
-      <div class="fg" style="margin-left:auto">
-        <label>&nbsp;</label>
-        <div class="presets"><button id="btnReset" style="border-color:#fca5a5;color:#dc2626">重置</button><button id="btnShot" class="shot" title="截图，导出为 PNG 图片">📷 截图</button><button id="btnDocx" class="shot" style="background:#0d9488;border-color:#0d9488;color:#fff" title="导出当前选中零售经理的对比分析 Word（按模板，含下降原因分析表）">📄 导出对比分析</button><button id="btnNature" class="shot" style="background:#059669;border-color:#059669;color:#fff" title="在主看板内展开自然到店专项面板（经理级三口径对比 + 一键截图）">☀ 自然到店专项</button></div>
       </div>
     </div>
     <div class="rmrow" id="rmRow">
@@ -308,6 +301,12 @@ tfoot td{font-weight:700;background:#fafbfd;border-top:2px solid var(--line);bor
     <div class="rmrow" id="modelRow" style="margin-top:6px">
       <span class="rmrow-l" style="margin-left:14px;padding-left:14px;border-left:1px solid var(--line)">车型</span>
       <div class="rmbtns" id="modelBtns"></div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+        <button id="btnReset" style="border-color:#fca5a5;color:#dc2626">重置</button>
+        <button id="btnShot" class="shot" title="截图，导出为 PNG 图片">📷 截图</button>
+        <button id="btnDocx" class="shot" style="background:#0d9488;border-color:#0d9488;color:#fff" title="导出当前选中零售经理的对比分析 Word（按模板，含下降原因分析表）">📄 导出对比分析</button>
+        <button id="btnNature" class="shot" style="background:#059669;border-color:#059669;color:#fff" title="在主看板内展开自然到店专项面板（经理级三口径对比 + 一键截图）">☀ 自然到店专项</button>
+      </div>
     </div>
   </div>
 
@@ -1747,13 +1746,6 @@ function natMom(v) {
   return '<span class="' + (up ? 'nat-up' : 'nat-down') + '">' + (up ? '↑ ' : '↓ ') +
          Math.abs(v).toFixed(1) + '%</span>';
 }
-function natBadge(i, r) {
-  if (r.mom == null) return '<span style="color:var(--t3)">—</span>';
-  if (r.mom < 0 && i < 3) return '<span class="nat-badge hot">跌最狠</span>';
-  if (r.mom > 0.5) return '<span class="nat-badge good">上升</span>';
-  if (Math.abs(r.mom) <= 0.5) return '<span class="nat-badge flat">持平</span>';
-  return '<span style="color:var(--t3)">—</span>';
-}
 function natCard(t, big, sub, mom) {
   return '<div class="nat-kpi"><div class="kt">' + t + '</div><div class="kb">' + big +
          '</div><div class="km">' + mom + '</div><div class="ks">' + sub + '</div></div>';
@@ -1771,13 +1763,13 @@ function renderNature() {
     natCard('同星期基准', natFmt(T.pwd) + ' 批', R.cand_label + '（与昨日同星期）', '基准');
   $('#natTbl').innerHTML =
     '<thead><tr><th>#</th><th>零售经理</th><th>门店数</th><th>本月累计</th><th>上月同期</th><th>本月降幅</th>' +
-    '<th>近7日</th><th>前7日</th><th>7日环比</th><th>昨日</th><th>同星期基准</th><th>单日环比</th><th>状态</th></tr></thead><tbody>' +
+    '<th>近7日</th><th>前7日</th><th>7日环比</th><th>昨日</th><th>同星期基准</th><th>单日环比</th></tr></thead><tbody>' +
     R.rows.map(function (r, i) {
       return '<tr><td class="c">' + (i + 1) + '</td><td class="nm">' + r.mgr + '</td><td class="c">' + r.cnt + '</td>' +
         '<td class="r">' + natFmt(r.cur) + '</td><td class="r">' + natFmt(r.base) + '</td><td class="r">' + natMom(r.mom) + '</td>' +
         '<td class="r">' + natFmt(r.c7) + '</td><td class="r">' + natFmt(r.b7) + '</td><td class="r">' + natMom(r.mom7) + '</td>' +
         '<td class="r">' + natFmt(r.yd) + '</td><td class="r">' + natFmt(r.pwd) + '</td><td class="r">' + natMom(r.momd) + '</td>' +
-        '<td class="c">' + natBadge(i, r) + '</td></tr>';
+        '</tr>';
     }).join('') + '</tbody>';
   $('#natFoot').innerHTML = '本月累计 = 本月1日~' + R.last.slice(8) + '日 日增量之和；上月同期 = 上月1日~同序号日（' + R.pm_label +
     '）；近7/前7 = 最近/此前7个数据日；昨日 = ' + R.yday.slice(5).replace('-', '.') + '；同星期基准 = ' + R.cand_label +
