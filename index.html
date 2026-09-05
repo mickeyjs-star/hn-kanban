@@ -55,9 +55,16 @@ input[type=date]:focus{outline:2px solid var(--pri-soft);border-color:var(--pri)
 .presets button{border:1px solid var(--line);background:#fff;border-radius:6px;padding:5px 9px;font-size:11.5px;
   cursor:pointer;color:var(--t2);font-family:inherit;transition:.15s}
 .presets button:hover{border-color:var(--pri);color:var(--pri);background:var(--pri-soft)}
-.presets button.shot{border-color:var(--pri);color:var(--pri);background:var(--pri-soft);font-weight:600}
-.presets button.shot:hover{background:var(--pri);color:#fff}
 .presets button:disabled{opacity:.55;cursor:wait}
+/* 车型行右侧 4 个功能按钮：与其他按钮同款外壳，仅淡色填充 + 同色系文字区分（2026-09-05） */
+#btnReset{background:#fef2f2;color:#dc2626}
+#btnReset:hover{background:#fecaca;border-color:#fca5a5;color:#b91c1c}
+#btnShot{background:#eff6ff;color:#2563eb}
+#btnShot:hover{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8}
+#btnDocx{background:#f0fdfa;color:#0d9488}
+#btnDocx:hover{background:#ccfbf1;border-color:#5eead4;color:#0f766e}
+#btnNature{background:#f0fdf4;color:#059669}
+#btnNature:hover{background:#dcfce7;border-color:#86efac;color:#047857}
 
 /* ---------- multiselect ---------- */
 .ms{position:relative}
@@ -301,11 +308,11 @@ tfoot td{font-weight:700;background:#fafbfd;border-top:2px solid var(--line);bor
     <div class="rmrow" id="modelRow" style="margin-top:6px">
       <span class="rmrow-l" style="margin-left:14px;padding-left:14px;border-left:1px solid var(--line)">车型</span>
       <div class="rmbtns" id="modelBtns"></div>
-      <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
-        <button id="btnReset" style="border-color:#fca5a5;color:#dc2626">重置</button>
-        <button id="btnShot" class="shot" title="截图，导出为 PNG 图片">📷 截图</button>
-        <button id="btnDocx" class="shot" style="background:#0d9488;border-color:#0d9488;color:#fff" title="导出当前选中零售经理的对比分析 Word（按模板，含下降原因分析表）">📄 导出对比分析</button>
-        <button id="btnNature" class="shot" style="background:#059669;border-color:#059669;color:#fff" title="在主看板内展开自然到店专项面板（经理级三口径对比 + 一键截图）">☀ 自然到店专项</button>
+      <div class="presets" style="margin-left:auto;display:flex;align-items:center;gap:8px">
+        <button id="btnReset" title="重置所有筛选条件">重置</button>
+        <button id="btnShot" title="截图，导出为 PNG 图片">📷 截图</button>
+        <button id="btnDocx" title="导出当前选中零售经理的对比分析 Word（按模板，含下降原因分析表）">📄 导出对比分析</button>
+        <button id="btnNature" title="在主看板内展开自然到店专项面板（经理级三口径对比 + 一键截图）">☀ 自然到店专项</button>
       </div>
     </div>
   </div>
