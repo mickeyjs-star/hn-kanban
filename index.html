@@ -121,6 +121,14 @@ input[type=date]:focus{outline:2px solid var(--pri-soft);border-color:var(--pri)
 .kc .it span{font-size:10.5px;color:var(--t3);white-space:nowrap}
 .kc .it b{font-size:14px;font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:-.2px}
 
+/* ---------- 全国维度 KPI（默认隐藏，点击展开） ---------- */
+#cnBox{display:none}
+#cnBox.on{display:block}
+.cn-head{padding:0 20px;margin-bottom:9px;display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--t3);flex-wrap:wrap}
+.cn-head .cn-tag{background:rgba(37,99,235,.10);color:#2563eb;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:700}
+.cn-head b{font-size:13px;color:var(--t1);font-weight:650}
+.hd-btns button.act{border-color:var(--pri);color:var(--pri);background:rgba(37,99,235,.08);font-weight:600}
+
 /* ---------- panels ---------- */
 .cv{content-visibility:auto;contain-intrinsic-size:auto 900px}
 .row{display:grid;gap:14px;margin-bottom:14px;overflow:hidden}
@@ -280,6 +288,7 @@ tr.mc-sel{box-shadow:inset 4px 0 0 var(--pri)}
         <button id="btnShot" title="截图，导出为 PNG 图片">📷 截图</button>
         <button id="btnDocx" title="导出当前选中零售经理的对比分析 Word（按模板，含下降原因分析表）">📄 导出对比分析</button>
         <button id="btnNature" title="在主看板内展开自然到店专项面板（经理级三口径对比 + 一键截图）">☀ 自然到店专项</button>
+        <button id="btnCN" title="展开/收起全国口径的 5 张核心卡（默认收起）">🌐 全国维度</button>
       </div>
     </div>
   </div>
@@ -349,6 +358,11 @@ tr.mc-sel{box-shadow:inset 4px 0 0 var(--pri)}
   </div>
 
   <div class="kpis" id="kpis"></div>
+
+  <div id="cnBox">
+    <div class="cn-head"><span class="cn-tag">全国</span><b>全国维度 · 核心口径</b><span id="cnScope"></span></div>
+    <div class="kpis" id="kpisCN"></div>
+  </div>
 
   <div class="row c2 cv" id="rowMgr">
     <div class="pn">
@@ -845,6 +859,34 @@ function renderKPI(cur, prev, cnCur, base, curDays, baseDays) {
       '</div></div>';
   }
   $('#kpis').innerHTML = h;
+}
+
+/* ========= 渲染：全国维度 KPI（默认隐藏，点击展开） =========
+   口径与顶部 5 张卡完全一致，只是把数据源换成「全国」（cn）。
+   全国没有华南的零售经理/门店/新媒体/市场维度，故卡片只跟随「车系」筛选；
+   右下角「华南占比」= 华南该渠道 ÷ 全国该渠道，用来看华南在全国的份量。 */
+function renderKPICN(cn, cnPrev, hn, cnBase, curDays, baseDays) {
+  const gAll = pick(cn, GROUPS[0]);
+  let h = '';
+  for (const g of GROUPS) {
+    const c = pick(cn, g), p = pick(cnPrev, g), s = pick(hn, g);
+    const bAvg = (cnBase && baseDays) ? pick(cnBase, g).lead / baseDays : null;
+    const cAvg = c.lead / curDays;
+    h += '<div class="kc" style="--ac:' + g.raw + '">' +
+      '<div class="nm"><i></i>' + g.name + '潜客</div>' +
+      '<div class="big">' + fmt(c.lead) + '</div>' +
+      '<div class="moms">' +
+        momLine('环比上月', c.lead, p.lead, '上月同期') +
+        momLine('环比本月日均', cAvg, bAvg, '本月日均') +
+      '</div>' +
+      '<div class="grid">' +
+        '<div class="it"><span>全国结构占比</span><b>' + pct(c.lead, gAll.lead) + '</b></div>' +
+        '<div class="it"><span>华南占比</span><b>' + pct(s.lead, c.lead) + '</b></div>' +
+        '<div class="it"><span>到店量</span><b>' + fmt(c.visit) + '</b></div>' +
+        '<div class="it"><span>到店率</span><b>' + pct(c.visit, c.valid) + '</b></div>' +
+      '</div></div>';
+  }
+  $('#kpisCN').innerHTML = h;
 }
 
 /* ========= 渲染：趋势图（随日期筛选：区间=只画所选区间；单日=回看近30天） ========= */
@@ -1522,10 +1564,12 @@ function render() {
   const [pa, pb] = prevRange(ST.d1, ST.d2);
   const prev = rangeVal(pa, pb, snapHN);
   const cn = rangeVal(ST.d1, ST.d2, snapCN);
+  const cnPrev = rangeVal(pa, pb, snapCN);
   const hnAll = rangeVal(ST.d1, ST.d2, snapHNAll);
   const B = mtdBase(ST.d1);
   const curDays = spanDays(ST.d1, ST.d2), baseDays = B ? B.days : 0;
   const base = B ? rangeVal(B.lo, B.hi, snapHN) : null;
+  const cnBase = B ? rangeVal(B.lo, B.hi, snapCN) : null;
 
   const rmTxt = ST.rm.size === DATA.managers.length ? '全部经理' : (ST.rm.size ? [...ST.rm].join('、') : '未选经理');
   const seTxt = ST.ml ? ('车型 ' + ST.ml)
@@ -1544,6 +1588,10 @@ function render() {
     ' &nbsp;|&nbsp; 环比日均基准 ' + (B ? (B.lo + ' ~ ' + B.hi + '（' + baseDays + '天日均）') : '无（起始日为1号）');
 
   renderKPI(cur, prev, cn, base, curDays, baseDays);
+  renderKPICN(cn, cnPrev, cur, cnBase, curDays, baseDays);
+  $('#cnScope').innerHTML = '统计区间 <b>' + (ST.d1 === ST.d2 ? ST.d1 : ST.d1 + ' ~ ' + ST.d2) +
+    '</b>（' + curDays + '天 · 每日新增口径） · ' + seTxt +
+    ' · 不限大区；<u>不受</u>零售经理／门店／新媒体经理／市场经理筛选影响';
   renderTrend();
   renderRank();
   renderCh(cur, prev, cn, base, curDays, baseDays);
@@ -1980,6 +2028,12 @@ function closeNat() {
   document.body.style.overflow = '';
 }
 $('#btnNature').onclick = openNat;
+$('#btnCN').onclick = function btnCNToggle() {
+  const box = $('#cnBox');
+  const on = box.classList.toggle('on');
+  this.classList.toggle('act', on);
+  this.innerHTML = on ? '🌐 收起全国' : '🌐 全国维度';
+};
 $('#natClose').onclick = closeNat;
 $('#natShot').onclick = function natShot() {
   const btn = $('#natShot');
@@ -2025,6 +2079,7 @@ $('#footNote').innerHTML =
   '⑨ 顶部5张核心卡为固定口径（始终5个渠道组），数值随零售经理/门店/新媒体经理/市场活动经理筛选变化；「渠道明细」展示全部12个渠道。<br>' +
   '⑩ <b>新媒体经理 / 市场活动经理</b>取自 <code>' + DATA.meta.rmSource + '</code> 的「区域新媒体经理」「区域市场经理」列，按门店匹配；与零售经理、门店同为全局维度（取交集），影响除5张核心卡口径标签外所有模块。<br>' +
   '⑪ <b>门店渠道明细</b>：门店×渠道双维下钻，<b>明细表</b>／<b>矩阵图</b>可切换标签，跟随顶部全部筛选（零售经理／车系／门店／新媒体经理／市场经理）；矩阵图<b style="color:#dc2626">红=环比下降</b>、<b style="color:#16a34a">绿=环比上升</b>，色深代表幅度，悬停看具体潜客与环比基数。<br>' +
+  '⑫ <b>全国维度卡片</b>（顶部「🌐 全国维度」按钮展开，默认收起）：5 张卡口径与顶部华南卡一致，但取<b>全国</b>数据；<b>全国没有华南的零售经理／门店／新媒体／市场维度，故只跟随「车系」筛选</b>。其中「华南占比」= 华南该渠道潜客 ÷ 全国该渠道潜客。<br>' +
   '<span style="color:var(--t3)">数据范围 ' + DMIN + ' ~ ' + DMAX + '，共 ' + ALL_DATES.length + ' 个快照日 · 华南门店 ' + DATA.stores.length + ' 家</span>';
 
 (async function boot() {
