@@ -355,6 +355,8 @@ tr.dl-tail td{box-shadow:inset 3px 0 0 #dc2626}
 #pnDeli.collapsed .dl-srcnote{display:none}
 /* 模块整体收起时，口径说明按钮一并隐藏（表体内容） */
 #pnDeli.collapsed .dl-note-toggle{display:none}
+/* 模块整体收起时，截图按钮一并隐藏（表体都没显示，截图无意义） */
+#pnDeli.collapsed #btnShotDeli{display:none}
 #btnDeliToggle{border:1px solid var(--line);background:#fff;border-radius:6px;padding:4px 10px;
   font-size:11.5px;cursor:pointer;color:var(--t2);font-family:inherit;white-space:nowrap;flex:none}
 #btnDeliToggle:hover{border-color:var(--pri);color:var(--pri);background:var(--pri-soft)}
@@ -505,11 +507,11 @@ tr.dl-tail td{box-shadow:inset 3px 0 0 #dc2626}
     </div>
   </div>
 
-  <div class="pn cv padx" id="pnDeli" data-jump="pnDeli">
+  <div class="pn cv padx collapsed" id="pnDeli" data-jump="pnDeli">
     <div class="pn-h">
       <h2>华南潜客到店率&amp;到店交付率专项 <span class="hint" id="deliScope"></span></h2>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <button id="btnDeliToggle" class="act" title="展开/收起「华南潜客到店率&到店交付率专项」">收起 ▴</button>
+        <button id="btnDeliToggle" title="展开/收起「华南潜客到店率&到店交付率专项」（默认收起）">展开 ▾</button>
         <span class="dl-updated" id="deliUpd" title="交付数取自订单表「新增交付」字段">◷ 交付数据：待接入</span>
         <span class="dl-updated" id="visitUpd" title="到店数取自零小跑到店记录明细，按(门店+手机号)当月内跨日去重">◷ 到店明细：待接入</span>
         <span class="dl-updated" id="lockUpd" title="锁单数取自订单表「净增锁单数」字段，用于偏科指数 K">◷ 锁单数据：待接入</span>
@@ -517,7 +519,7 @@ tr.dl-tail td{box-shadow:inset 3px 0 0 #dc2626}
       </div>
     </div>
     <div class="pn-b" style="padding:0">
-      <div id="deliBody" class="on">
+      <div id="deliBody">
       <button id="btnDeliNote" class="dl-note-toggle" title="展开/收起口径说明（默认收起）">口径说明 <span class="ar">展开 ▾</span></button>
       <div class="dl-srcnote" id="deliSrcNote" hidden>
         <b>口径说明</b>　潜客到店率 = 当月到店数 ÷ 当月新增潜客；到店交付率 = 当月新增交付数 ÷ 当月到店数。「当月」取源表<b>当月累计值</b>，跟随上方日期筛选变化。到店数取自<b>零小跑到店记录明细</b>，按 (门店编码+手机号) <b>当月内跨日去重</b>的人数。<b class="dl-warn">此口径仅用于本模块</b>——其余模块（渠道/趋势/门店明细等）仍用源表「到店次数」，<b>两套口径不可混读或跨模块对比</b>。<br>
