@@ -35,6 +35,66 @@ body{font-family:"PingFang SC","Microsoft YaHei","Hiragino Sans GB",system-ui,-a
   white-space:nowrap;flex:none;font-size:11px;line-height:1.5}
 .tag b{color:var(--t1)}
 
+/* ---------- 日期范围选择器（双面板日历） ---------- */
+.dp-trigger{min-width:212px;padding:4px 10px;border:1px solid var(--line);border-radius:6px;
+  background:#fff;cursor:pointer;font-family:inherit;font-size:11.5px;color:var(--t1);
+  display:inline-flex;align-items:center;justify-content:space-between;gap:8px;white-space:nowrap}
+.dp-trigger:hover{border-color:var(--pri)}
+.dp-trigger.on{border-color:var(--pri);box-shadow:0 0 0 2px var(--pri-soft)}
+.dp-trigger .cico{opacity:.55;font-size:12px}
+.dpop{position:absolute;z-index:220;display:none;margin-top:4px}
+.dpop.open{display:block}
+.dpop-in{display:flex;background:#fff;border:1px solid var(--line);border-radius:8px;
+  box-shadow:0 10px 28px -8px rgba(16,24,40,.22);overflow:hidden}
+/* 左侧快捷选项 */
+.dpop-quick{width:112px;border-right:1px solid var(--line);padding:8px 0;background:#fcfdff;flex:none}
+.dpop-quick button{display:block;width:100%;text-align:left;padding:7px 14px;border:0;background:none;
+  cursor:pointer;font-family:inherit;font-size:12px;color:var(--t1);white-space:nowrap}
+.dpop-quick button:hover{background:var(--pri-soft);color:var(--pri)}
+.dpop-quick button.on{background:var(--pri-soft);color:var(--pri);font-weight:600}
+/* 右侧日历 */
+.dpop-cal{padding:10px 12px 8px}
+.dp-nav{display:flex;align-items:center;gap:2px;margin-bottom:6px}
+.dp-arrow{border:0;background:none;cursor:pointer;color:var(--t2);font-size:14px;line-height:1;
+  padding:4px 7px;border-radius:4px;font-family:inherit}
+.dp-arrow:hover{background:var(--pri-soft);color:var(--pri)}
+.dp-title{font-size:12px;font-weight:600;color:var(--t1);min-width:88px;text-align:center;white-space:nowrap}
+.dp-gap{flex:1}
+.dp-panes{display:flex;gap:18px}
+.dp-week{display:grid;grid-template-columns:repeat(7,34px);gap:2px;margin-bottom:3px}
+.dp-week i{font-style:normal;text-align:center;font-size:11px;color:var(--t3);line-height:20px}
+.dp-week i.we-i{color:#c3cad6}
+.dp-grid{display:grid;grid-template-columns:repeat(7,34px);gap:2px}
+.dp-cell{height:30px;line-height:30px;text-align:center;font-size:11.5px;border-radius:15px;
+  cursor:default;color:var(--t1);user-select:none;position:relative}
+.dp-cell.pad{color:transparent;cursor:default}
+/* 周末淡化 */
+.dp-cell.we{color:var(--t3)}
+/* 无数据日：灰且不可选 */
+.dp-cell.nodata{color:#c3cad6;cursor:not-allowed}
+/* 有数据日：可点，悬停变蓝 */
+.dp-cell.has{cursor:pointer}
+.dp-cell.has:hover{background:var(--pri-soft)}
+/* 区间内的天：浅蓝底、蓝色字 */
+.dp-cell.in{background:var(--pri-soft);color:var(--pri);border-radius:0}
+.dp-cell.edge{border-radius:15px;background:var(--pri);color:#fff;font-weight:600}
+.dp-cell.today-mark::after{content:'';position:absolute;left:50%;bottom:4px;width:3px;height:3px;
+  border-radius:50%;background:var(--pri);transform:translateX(-50%)}
+.dp-cell.edge.today-mark::after{background:#fff}
+.dp-foot{display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:7px;border-top:1px solid var(--line)}
+.dp-hint{font-size:11px;color:var(--t3)}
+.dp-foot-sp{flex:1}
+.dp-btn{border:1px solid var(--line);background:#fff;border-radius:5px;padding:4px 12px;
+  cursor:pointer;font-family:inherit;font-size:11.5px;color:var(--t2)}
+.dp-btn:hover{border-color:var(--pri);color:var(--pri)}
+.dp-btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+.dp-btn.pri:hover{opacity:.9;color:#fff}
+.dp-legend{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--t3);margin-top:5px}
+.dp-legend i{width:9px;height:9px;border-radius:5px;display:inline-block}
+.dp-legend i.l1{background:var(--pri)}
+.dp-legend i.l2{background:var(--pri-soft)}
+.dp-legend i.l3{background:#fff;border:1px solid var(--line)}
+
 /* ---------- filter bar ---------- */
 /* 筛选栏固定：用户 2026-10-06 要求「冻结在上方」。实测 position:sticky 在本页不生效，
    改用 fixed 更可靠；由 syncStickyPad() 把固定栏占位高度写进 wrap 的 padding-top 防止遮挡。 */
@@ -394,6 +454,38 @@ tr.dl-tail td{box-shadow:inset 3px 0 0 #dc2626}
     </div>
   </div>
 
+<!-- ========= 日期范围选择器（2026-10-14，参考 Ant Design 双面板样式） =========
+     左侧快捷选项（今天/昨天/最近N天/上周/本月），右侧并列两个月历。
+     特点：只有「真实数据日」可选（有数据的日期才高亮可点，无数据灰显），
+     周末淡化；选中区间用浅蓝底 + 首尾实心蓝，与参考图一致。 -->
+<div class="dpop" id="dpop">
+  <div class="dpop-in">
+    <div class="dpop-quick" id="dpopQuick"></div>
+    <div class="dpop-cal">
+      <div class="dp-nav">
+        <button class="dp-arrow" id="dpPrev" title="上一月">«</button>
+        <button class="dp-arrow" id="dpPrev2" title="上一月">‹</button>
+        <span class="dp-title" id="dpTitle1">—</span>
+        <span class="dp-gap"></span>
+        <span class="dp-title" id="dpTitle2">—</span>
+        <button class="dp-arrow" id="dpNext2" title="下一月">›</button>
+        <button class="dp-arrow" id="dpNext" title="下一月">»</button>
+        <span class="dp-legend"><i class="l1"></i>起止 <i class="l2"></i>区间内 <i class="l3"></i>无数据</span>
+      </div>
+      <div class="dp-panes">
+        <div class="dp-pane" id="dpPane1"></div>
+        <div class="dp-pane" id="dpPane2"></div>
+      </div>
+      <div class="dp-foot">
+        <span class="dp-hint" id="dpHint">选择起止日期</span>
+        <span class="dp-foot-sp"></span>
+        <button class="dp-btn" id="dpCancel">取消</button>
+        <button class="dp-btn pri" id="dpOk">确定</button>
+      </div>
+    </div>
+  </div>
+</div>
+
   <div class="warn" id="warnBox"></div>
 
   <div class="fsticky">
@@ -407,10 +499,14 @@ tr.dl-tail td{box-shadow:inset 3px 0 0 #dc2626}
       </div>
       <div class="fg">
         <label>日期</label>
-        <div style="display:flex;gap:6px">
-          <input type="date" id="d1">
-          <span class="dsep" id="dsep">→</span>
-          <input type="date" id="d2">
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="dp-trigger" id="dpTrigger" title="点击选择日期范围（左侧有快捷选项）">
+            <span id="dpLabel">—</span><span class="cico">▾</span>
+          </button>
+          <!-- 保留原生 input 作为数据载体与无障碍回退，不直接显示 -->
+          <input type="date" id="d1" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none">
+          <span class="dsep" id="dsep" style="position:absolute;opacity:0;width:1px;height:1px">→</span>
+          <input type="date" id="d2" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none">
         </div>
       </div>
       <div class="fg">
@@ -2320,6 +2416,7 @@ function render() {
   if (window.updateExportBtn) window.updateExportBtn();
   $('#d1').style.display = ST.mode === 'day' ? 'none' : '';
   $('#dsep').style.display = ST.mode === 'day' ? 'none' : '';
+  if (window.syncDpLabel) window.syncDpLabel();   // 同步日期触发按钮上的文字
 
   const cur = rangeVal(ST.d1, ST.d2, snapHN);
   const [pa, pb] = prevRange(ST.d1, ST.d2);
@@ -2621,6 +2718,165 @@ $('#segMode').onclick = e => {
 };
 $('#d1').onchange = e => { ST.d1 = e.target.value; if (ST.d1 > ST.d2) ST.d2 = ST.d1; scheduleRender(); };
 $('#d2').onchange = e => { ST.d2 = e.target.value; if (ST.mode === 'day') ST.d1 = ST.d2; else if (ST.d1 > ST.d2) ST.d1 = ST.d2; scheduleRender(); };
+
+/* ========= 日期范围选择器（双面板日历，2026-10-14） =========
+   参考 Ant Design 交互：
+   - 左侧快捷（今天/昨天/最近N天/上周/上月/本月）
+   - 右侧并列两个月历，« ‹ › » 翻月
+   - 点两次分别定起止；区间内浅蓝底，首尾实心蓝圆点
+   - **只有真实数据日可点**（SNAP 里没有的日期灰显），避免选到空档
+   - 确定后才写入 ST 并触发 render，取消则不改动
+   原生 <input type=date> 保留为隐藏的数据载体，所有下游逻辑照旧。 */
+(function () {
+  const pop = $('#dpop'), trig = $('#dpTrigger'), label = $('#dpLabel');
+  let vm = 0, sel = null;          // vm = 左侧面板月份(1-12)，sel = 待确认的 [起, 止]
+
+  // 快捷项：都基于「最新数据日」而非今天，避免与数据脱节
+  function quickRange(p) {
+    const L = ymd(DMAX), py = L.m === 1 ? L.y - 1 : L.y, pm = L.m === 1 ? 12 : L.m - 1;
+    // 取 <= 目标日的最近一个数据日
+    const snapOf = (y, m, d) => {
+      const a = SNAP[mk(y, m, 1).slice(0, 7)] || [];
+      let best = null;
+      for (const x of a) if (x <= mk(y, m, d)) best = x;
+      return best;
+    };
+    if (p === 'today')  return [DMAX, DMAX];
+    if (p === 'yest')   { const a = ALL_DATES.filter(x => x < DMAX); return [a[a.length - 1], a[a.length - 1]]; }
+    if (p === 'l3' || p === 'l7' || p === 'l15' || p === 'l30') {
+      const n = +p.slice(1);
+      const idx = Math.max(0, ALL_DATES.length - n);
+      return [ALL_DATES[idx], DMAX];
+    }
+    if (p === 'lw') {                                  // 上周（自然周，周一~周日）
+      const d = new Date(L.y, L.m - 1, L.d);
+      const dow = (d.getDay() + 6) % 7;                // 周一=0
+      const end = new Date(d); end.setDate(d.getDate() - dow - 1);
+      const start = new Date(end); start.setDate(end.getDate() - 6);
+      let s = snapOf(start.getFullYear(), start.getMonth() + 1, start.getDate());
+      let e = snapOf(end.getFullYear(), end.getMonth() + 1, end.getDate());
+      if (!s) s = ALL_DATES[0]; if (!e) e = DMAX;
+      return s > e ? [e, s] : [s, e];
+    }
+    if (p === 'lm')  return [mk(py, pm, 1), mk(py, pm, daysIn(py, pm))];   // 上月整月
+    if (p === 'pmt') return [mk(py, pm, daysIn(py, pm)), DMAX];              // 上月起至今
+    if (p === 'mtd') return [mk(L.y, L.m, 1), DMAX];                        // 本月至今
+    return null;
+  }
+
+  function renderQuick() {
+    const box = $('#dpopQuick');
+    const items = [['today', '今天'], ['yest', '昨天'], ['l3', '最近3天'], ['l7', '最近7天'],
+                   ['l15', '最近15天'], ['l30', '最近30天'], ['lw', '上周'],
+                   ['lm', '上月'], ['pmt', '上月起'], ['mtd', '本月至今']];
+    box.innerHTML = items.map(([k, t]) =>
+      `<button data-q="${k}">${t}</button>`).join('');
+    box.onclick = e => {
+      const b = e.target.closest('button'); if (!b) return;
+      const r = quickRange(b.dataset.q); if (!r) return;
+      sel = r.slice();
+      draw();
+    };
+  }
+
+  function draw() {
+    const L = ymd(DMAX);
+    const y1 = L.y, m1 = vm;
+    const m2 = m1 === 12 ? 1 : m1 + 1, y2 = m1 === 12 ? L.y + 1 : L.y;
+    $('#dpTitle1').textContent = `${y1} 年 ${m1} 月`;
+    $('#dpTitle2').textContent = `${y2} 年 ${m2} 月`;
+    const p1 = $('#dpPane1'), p2 = $('#dpPane2');
+    p1.innerHTML = ''; p2.innerHTML = '';
+    const mk1 = '<div class="dp-week"><i>一</i><i>二</i><i>三</i><i>四</i><i>五</i><i class="we-i">六</i><i class="we-i">日</i></div>';
+    p1.innerHTML = mk1 + '<div class="dp-grid"></div>';
+    p2.innerHTML = mk1 + '<div class="dp-grid"></div>';
+    fill(p1, y1, m1); fill(p2, y2, m2);
+    // 底部提示
+    const hint = $('#dpHint');
+    if (!sel || !sel[0]) hint.textContent = '选择起止日期';
+    else if (!sel[1]) hint.innerHTML = '起点 <b>' + sel[0] + '</b> · 再选一个日期作为终点';
+    else if (sel[0] === sel[1]) hint.innerHTML = '单日 <b>' + sel[0] + '</b>';
+    else hint.innerHTML = `${sel[0]} ~ ${sel[1]}（共 ${ALL_DATES.filter(x => x >= sel[0] && x <= sel[1]).length} 个数据日）`;
+  }
+
+  function fill(paneEl, y, m) {
+    const grid = paneEl.querySelector('.dp-grid');
+    const first = new Date(y, m - 1, 1).getDay();
+    const lead = (first + 6) % 7;
+    const n = daysIn(y, m);
+    const avail = new Set(SNAP[mk(y, m, 1).slice(0, 7)] || []);
+    let h = '';
+    for (let i = 0; i < lead; i++) h += '<div class="dp-cell pad"></div>';
+    for (let d = 1; d <= n; d++) {
+      const ds = mk(y, m, d);
+      const dow = (new Date(y, m - 1, d).getDay() + 6) % 7;
+      let cls = 'dp-cell';
+      if (dow >= 5) cls += ' we';
+      cls += avail.has(ds) ? ' has' : ' nodata';
+      if (sel) {
+        if (ds === sel[0] || ds === sel[1]) cls += ' edge';
+        else if (ds > sel[0] && ds < sel[1]) cls += ' in';
+      }
+      if (ds === DMAX) cls += ' today-mark';
+      h += `<div class="${cls}" data-d="${ds}">${d}</div>`;
+    }
+    grid.innerHTML = h;
+  }
+
+  function onPick(e) {
+    const c = e.target.closest('.dp-cell.has'); if (!c) return;
+    const ds = c.dataset.d;
+    if (!sel || sel[1] != null && sel[0] != null && sel[0] !== sel[1] && ds >= sel[0]) sel = [ds, null];
+    else sel = sel && sel[0] && !sel[1] ? [sel[0], ds] : [ds, null];
+    if (sel[0] && sel[1] && sel[0] > sel[1]) sel = [sel[1], sel[0]];
+    draw();
+  }
+
+  function open() {
+    sel = [ST.d1, ST.d2];
+    const L = ymd(sel[1] || DMAX);
+    vm = L.m;
+    draw(); pop.classList.add('open'); trig.classList.add('on');
+    syncLabel();
+    // 定位到触发按钮下方
+    const r = trig.getBoundingClientRect();
+    pop.style.top = (r.bottom + window.scrollY) + 'px';
+    const w = pop.offsetWidth;
+    let left = r.left + window.scrollX;
+    if (left + w > window.scrollX + document.documentElement.clientWidth - 12)
+      left = window.scrollX + document.documentElement.clientWidth - w - 12;
+    pop.style.left = Math.max(4, left) + 'px';
+  }
+  function close() { pop.classList.remove('open'); trig.classList.remove('on'); }
+
+  function syncLabel() {
+    label.textContent = (ST.d1 === ST.d2) ? ST.d1 : ST.d1 + ' ~ ' + ST.d2;
+  }
+  window.syncDpLabel = syncLabel;
+
+  renderQuick();
+  trig.onclick = () => pop.classList.contains('open') ? close() : open();
+  $('#dpop').addEventListener('click', onPick);
+  $('#dpPrev').onclick = () => { vm = vm === 1 ? 12 : vm - 1; draw(); };
+  $('#dpPrev2').onclick = () => { vm = vm === 1 ? 12 : vm - 1; draw(); };
+  $('#dpNext').onclick = () => { vm = vm === 12 ? 1 : vm + 1; draw(); };
+  $('#dpNext2').onclick = () => { vm = vm === 12 ? 1 : vm + 1; draw(); };
+  $('#dpCancel').onclick = () => { close(); sel = [ST.d1, ST.d2]; };
+  $('#dpOk').onclick = () => {
+    if (sel && sel[0] && sel[1]) {
+      ST.d1 = sel[0]; ST.d2 = sel[1];
+      if (ST.mode === 'day') ST.mode = 'range';
+      _cache.clear(); close(); syncLabel(); scheduleRender();
+    } else close();
+  };
+  document.addEventListener('mousedown', e => {
+    if (!pop.classList.contains('open')) return;
+    if (pop.contains(e.target) || trig.contains(e.target)) return;
+    close();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+  syncLabel();
+})();
 $('#presets').onclick = e => {
   const b = e.target.closest('button'); if (!b) return;
   const p = b.dataset.p, L = ymd(DMAX);
