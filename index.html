@@ -1969,10 +1969,16 @@ function aggDeliStore(opt) {
           for (const [si] of cur) {
             if (!deliStoreOK(si, baseline)) continue;
             const nv = useMap[DATA.stores[si][0]];
-            if (nv == null) continue;
             let o = cur.get(si);
             if (!o) { o = { lead: 0, visit: 0, deli: 0 }; cur.set(si, o); }
-            o.visit = nv;                    // 明细覆盖：直接赋值（不是 +=）
+            // 🔴 2026-10-16（用户裁定：明细无记录就显示 0）：
+            //   原写法 `if (nv == null) continue` —— 明细里没这家店时**跳过**，
+            //   该店就保留了 addRows 填的「源表到店次数」错值（当天源表若是残缺零行，
+            //   再经 `c.visit − b2.visit` 就会算出负数被 Math.max(0) 兜成 0，
+            //   而有正基数的会算出错误的正数 —— 实测三亚体验中心迎宾路汽车城店
+            //   10-15 显示 166，实际该店当日明细无记录、应为 0）。
+            //   明细是本模块的唯一权威口径：**没有就是 0，不回退源表、不留残值**。
+            o.visit = (nv == null ? 0 : nv);
           }
           // 🔴 2026-10-16 关键修正：到店一旦取用明细（visit_by_store 累计值 或 visit_by_day 累加值），
           //   都是**区间本身的绝对值**，根本不该再跟 bas(区间初快照的源表到店次数) 相减。
