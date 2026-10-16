@@ -402,8 +402,6 @@ tr.dl-total td{background:#eef4ff!important;font-weight:700;color:#16335f}
 tr.dl-tail td{box-shadow:inset 3px 0 0 #dc2626}
 .dl-tailtag{display:inline-block;padding:1px 5px;border-radius:3px;background:#fee2e2;color:#b91c1c;font-size:10px;font-weight:600;margin-left:4px;white-space:nowrap}
 /* 数据更新时间角标（交付数数据源独立） */
-.dl-updated{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:11px;font-weight:600;white-space:nowrap}
-.dl-updated.warn{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
 .dl-srcnote{padding:8px 12px;margin:0;background:#fffbeb;border-left:3px solid #f59e0b;color:#92400e;font-size:11px;line-height:1.7;border-bottom:1px solid var(--line2)}
 .dl-srcnote b{color:#78350f}
 .dl-muted{color:var(--t3)}
@@ -606,8 +604,6 @@ tr.dl-tail td{box-shadow:inset 3px 0 0 #dc2626}
       <h2>华南潜客到店率&amp;到店交付率专项 <span class="hint" id="deliScope"></span></h2>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <button id="btnDeliToggle" title="展开/收起「华南潜客到店率&到店交付率专项」（默认收起）">展开 ▾</button>
-        <span class="dl-updated" id="deliUpd" title="交付数取自订单表「新增交付」字段">◷ 交付数据：待接入</span>
-        <span class="dl-updated" id="visitUpd" title="到店数取自零小跑到店记录明细，按(门店+手机号)当月内跨日去重">◷ 到店明细：待接入</span>
         <button id="btnShotDeli" class="shot-btn" data-shot="华南潜客到店率与到店交付率专项" data-shot-sel="#pnDeli" title="把本模块（标题 + 口径说明 + 完整表格）导出为 PNG 图片">📷 截图</button>
       </div>
     </div>
@@ -1840,14 +1836,17 @@ const DELI_CFG = {
 const VISIT = (typeof DATA !== 'undefined' && DATA.visit_by_store) || null;
 const VISIT_DAY = (typeof DATA !== 'undefined' && DATA.visit_by_day) || null;
 const VISIT_META = (typeof DATA !== 'undefined' && DATA.visit) || null;
-const _visitSrc = $('#visitUpd');
-if (VISIT && VISIT_META && VISIT_META.dates && VISIT_META.dates.length) {
-  const last = VISIT_META.dates[VISIT_META.dates.length - 1];
-  const stale = last !== ST.d2;
-  _visitSrc.className = 'dl-updated' + (stale ? ' warn' : '');
-  _visitSrc.textContent = '◷ 到店明细：' + last;
-  _visitSrc.title = '到店数取自零小跑到店记录明细，按(门店+手机号)当月内跨日去重，最新 ' + last +
-    (stale ? '　⚠ 与当前所选数据日 ' + ST.d2 + ' 不一致' : '');
+// 2026-10-16：原标题栏有「◷ 交付数据 / 到店明细 / 锁单数据」三个状态标签（deliUpd/visitUpd/lockUpd），
+//   用户要求删除。明细是否落后于所选数据日，改由标题栏「到店数口径」那行橙色警示承担
+//   （visitFallback / visitPartial / visitMixed 三种，范围更广、位置更显眼）。
+//   为不丢失「明细滞后于所选数据日」这一提醒，把判断下移到 deliScope 渲染处。
+function visitStale() {
+  return !!(VISIT && VISIT_META && VISIT_META.dates && VISIT_META.dates.length
+    && VISIT_META.dates[VISIT_META.dates.length - 1] !== ST.d2);
+}
+function visitLatest() {
+  return (VISIT && VISIT_META && VISIT_META.dates && VISIT_META.dates.length)
+    ? VISIT_META.dates[VISIT_META.dates.length - 1] : '—';
 }
 // ---- 筛选条件（与主看板一致）----
 function deliStoreOK(si, baseline) {
@@ -2207,7 +2206,8 @@ function renderDeli() {
     '</b> · 口径 <b>' + ((rows.months && rows.months.length) ? rows.months.join('+') : ST.d2.slice(0, 7)) + ' 当月累计值</b>' +
     ' · 门店 <b>' + rows.length + '</b> 家（仅零跑中心/城市展厅/商超店）' +
     ' · 参与排名 <b>' + nV + '</b> / <b>' + nD + '</b> 家 · 排名范围 <b class="dl-muted">华南大区全量（不随筛选变化，当前筛选出 ' + rows.length + ' 家）</b>' +
-    ' · 到店数口径 <b class="' + ((rows.visitFallback || rows.visitMixed || rows.visitPartial) ? 'dl-warn' : '') + '">' + (rows.visitSrc || '—') + '</b>'
+    ' · 到店数口径 <b class="' + ((rows.visitFallback || rows.visitMixed || rows.visitPartial || visitStale()) ? 'dl-warn' : '') + '">' + (rows.visitSrc || '—') + '</b>'
+    + (visitStale() ? ' <b class="dl-warn">⚠ 到店明细最新仅到 ' + visitLatest() + '，与所选数据日 ' + ST.d2 + ' 不一致</b>' : '')
     + (rows.visitPartial ? ' <b class="dl-warn">⚠ 区间内有 ' + rows.visitMissing + ' 天缺到店明细，到店数偏低、到店率与排名偏保守</b>' : '')
     + (rows.visitMixed ? ' <b class="dl-warn">⚠ 跨月各段口径不同，不可与整月口径直接对比</b>' : '');
   const vs = $('#visitSub');
