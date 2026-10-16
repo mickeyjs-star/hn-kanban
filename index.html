@@ -369,7 +369,6 @@ tr.mc-sel{box-shadow:inset 4px 0 0 var(--pri)}
 /* 列分组：潜客段=蓝 / 交付段=橙 / 偏科段=紫 / 得分段=绿 */
 #tbDeli td.d-lead, #tbDeli th.d-lead{background:#eff5fd}
 #tbDeli td.d-deli, #tbDeli th.d-deli{background:#fff6ef}
-#tbDeli td.d-lock, #tbDeli th.d-lock{background:#f5f0fd}
 #tbDeli td.d-rank, #tbDeli th.d-rank{background:#fdf3f3}
 /* 口径说明：默认收起，点标题行展开（用户 2026-10-06 要求） */
 .dl-note-toggle{display:flex;align-items:center;gap:6px;width:100%;text-align:left;
@@ -390,7 +389,6 @@ tr.mc-sel{box-shadow:inset 4px 0 0 var(--pri)}
 #tbDeli td.d-score, #tbDeli th.d-score{background:#f0faf3}
 #tbDeli thead th.d-lead{background:#d9e7fb}
 #tbDeli thead th.d-deli{background:#ffe7d6}
-#tbDeli thead th.d-lock{background:#e4d9f7}
 #tbDeli thead th.d-score{background:#d7f0df}
 #tbDeli th.grp{border-left:2px solid #dde3ec;text-align:center;letter-spacing:.5px}
 #tbDeli td.grp{border-left:2px solid #dde3ec}
@@ -610,7 +608,6 @@ tr.dl-tail td{box-shadow:inset 3px 0 0 #dc2626}
         <button id="btnDeliToggle" title="展开/收起「华南潜客到店率&到店交付率专项」（默认收起）">展开 ▾</button>
         <span class="dl-updated" id="deliUpd" title="交付数取自订单表「新增交付」字段">◷ 交付数据：待接入</span>
         <span class="dl-updated" id="visitUpd" title="到店数取自零小跑到店记录明细，按(门店+手机号)当月内跨日去重">◷ 到店明细：待接入</span>
-        <span class="dl-updated" id="lockUpd" title="锁单数取自订单表「净增锁单数」字段，用于偏科指数 K">◷ 锁单数据：待接入</span>
         <button id="btnShotDeli" class="shot-btn" data-shot="华南潜客到店率与到店交付率专项" data-shot-sel="#pnDeli" title="把本模块（标题 + 口径说明 + 完整表格）导出为 PNG 图片">📷 截图</button>
       </div>
     </div>
@@ -619,7 +616,7 @@ tr.dl-tail td{box-shadow:inset 3px 0 0 #dc2626}
       <button id="btnDeliNote" class="dl-note-toggle" title="展开/收起口径说明（默认收起）">口径说明 <span class="ar">展开 ▾</span></button>
       <div class="dl-srcnote" id="deliSrcNote" hidden>
         <b>口径说明</b>　潜客到店率 = 当月到店数 ÷ 当月新增潜客；到店交付率 = 当月新增交付数 ÷ 当月到店数。「当月」取源表<b>当月累计值</b>，跟随上方日期筛选变化。到店数取自<b>零小跑到店记录明细</b>，按 (门店编码+手机号) <b>当月内跨日去重</b>的人数。<b class="dl-warn">此口径仅用于本模块</b>——其余模块（渠道/趋势/门店明细等）仍用源表「到店次数」，<b>两套口径不可混读或跨模块对比</b>。<br>
-        <b>排名</b>　潜客到店率、到店交付率各按<b>华南大区内</b>排名（1 = 最好，附「名次/总数」）。<b class="dl-warn">名次固定为全华南基准</b> —— 切任何筛选都不变，可直接回答「这家店在大区排第几」。<b>不计得分</b>。偏科指数 K / 波动 CV 仅作参考列，不参与排名。<br>
+        <b>排名</b>　潜客到店率、到店交付率各按<b>华南大区内</b>排名（1 = 最好，附「名次/总数」）。<b class="dl-warn">名次固定为全华南基准</b> —— 切任何筛选都不变，可直接回答「这家店在大区排第几」。<b>不计得分</b>。<br>
         <b>区间口径</b>　<b class="dl-warn">单日 = 当日去重人数</b>（看当天有多少人来过）；<b>整月至今 / 整月 = 当月累计跨日去重人数</b>；月内子区间与跨月区间 = 当日去重人数按区间累加。<b class="dl-warn">单日与整月两种口径不可直接对比</b>（一个是日、一个是月累计）。交付数同理：单日取「当日新增交付」，区间取「区间末快照 − 区间初快照」。跨月时若某月无明细，该段兜底用源表次数，标题栏橙色警示。</div>
       <div class="tw"><table id="tbDeli"></table></div>
       </div>
@@ -2158,7 +2155,6 @@ function renderDeli() {
     '<th class="grp d-rank" colspan="1">排名（华南）</th>' +
     '<th class="grp d-deli" colspan="2">交付</th>' +
     '<th class="grp d-rank" colspan="1">排名（华南）</th>' +
-    '<th class="grp d-lock" colspan="2">偏科指数<span class="th-sub">参考</span></th>' +
     '</tr><tr>' +
     '<th class="d-mgr" data-k="rm">零售经理<span class="ar" data-ar="rm"></span></th>' +
     '<th class="d-lead" data-k="newLead">当月新增潜客<span class="ar" data-ar="newLead"></span></th>' +
@@ -2168,8 +2164,7 @@ function renderDeli() {
     '<th class="d-deli" data-k="deli">当月交付数<span class="ar" data-ar="deli"></span></th>' +
     '<th class="d-deli" data-k="rateDeli">到店交付率<span class="ar" data-ar="rateDeli"></span></th>' +
     '<th class="d-rank" data-k="rkD">交付率名次<span class="ar" data-ar="rkD"></span></th>' +
-    '<th class="d-lock" data-k="k">K值<span class="ar" data-ar="k"></span></th>' +
-    '<th class="d-lock" data-k="cv">波动CV<span class="ar" data-ar="cv"></span></th>' +
+    // 2026-10-16 用户要求：删除「偏科指数 K值 / 波动CV」两列（纯参考列，不参与排名与得分）
     '</tr></thead><tbody>' + arr.map(r => {
       return '<tr>' +
         '<td title="' + r.code + ' · ' + r.city + ' · ' + r.attr + ' · 零售经理 ' + r.rm +
@@ -2182,8 +2177,6 @@ function renderDeli() {
         '<td class="d-deli">' + (r.deli == null ? '<span class="dl-pending">无数据</span>' : fmt(r.deli)) + '</td>' +
         '<td class="d-deli">' + P2(r.rateDeli) + '</td>' +
         '<td class="d-rank">' + RK(r.rkD, r.rkDN) + '</td>' +
-        '<td class="d-lock dl-muted">' + K3(r.k) + '</td>' +
-        '<td class="d-lock dl-muted">' + CV(r.cv) + '</td>' +
         '</tr>';
     }).join('') + '</tbody>';
   // 合计：率一律用全局分子/分母汇总法（严禁各门店率简单平均）
@@ -2198,8 +2191,6 @@ function renderDeli() {
     '<td class="d-deli">' + (sD == null ? '<span class="dl-pending">无数据</span>' : fmt(sD)) + '</td>' +
     '<td class="d-deli">' + (sD == null || !sV ? '<span class="dl-pending">—</span>' : (sD / sV * 100).toFixed(2) + '%') + '</td>' +
     '<td class="d-rank dl-muted">—</td>' +
-    '<td class="d-lock dl-muted">—</td>' +
-    '<td class="d-lock dl-muted">—</td>' +
     '</tr></tfoot>';
   tb.innerHTML = h;
   tb.querySelectorAll('thead th[data-k]').forEach(th => {
