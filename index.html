@@ -603,16 +603,16 @@ tr.dl-tail td{box-shadow:inset 3px 0 0 #dc2626}
     </div>
   </div>
 
-  <div class="pn cv padx collapsed" id="pnDeli" data-jump="pnDeli">
+  <div class="pn cv padx" id="pnDeli" data-jump="pnDeli">
     <div class="pn-h">
       <h2>华南潜客到店率&amp;到店交付率专项 <span class="hint" id="deliScope"></span></h2>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <button id="btnDeliToggle" title="展开/收起「华南潜客到店率&到店交付率专项」（默认收起）">展开 ▾</button>
+        <button id="btnDeliToggle" class="act" title="展开/收起「华南潜客到店率&到店交付率专项」（默认展开）">收起 ▴</button>
         <button id="btnShotDeli" class="shot-btn" data-shot="华南潜客到店率与到店交付率专项" data-shot-sel="#pnDeli" title="把本模块（标题 + 口径说明 + 完整表格）导出为 PNG 图片">📷 截图</button>
       </div>
     </div>
     <div class="pn-b" style="padding:0">
-      <div id="deliBody">
+      <div id="deliBody" class="on">
       <button id="btnDeliNote" class="dl-note-toggle" title="展开/收起口径说明（默认收起）">口径说明 <span class="ar">展开 ▾</span></button>
       <div class="dl-srcnote" id="deliSrcNote" hidden>
         <b>口径说明</b>　潜客到店率 = 区间到店数 ÷ 区间新增潜客；到店交付率 = 区间交付数 ÷ 区间到店数。两者都跟随上方日期筛选变化。<br>
