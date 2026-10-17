@@ -2008,21 +2008,34 @@ function aggDeliStore(opt) {
       // 交付：同月「区间末快照 − 区间初快照」的差
       if (DELI && DELI.byDate && DELI.byDate[end]) {
         const dE = DELI.byDate[end];
-        // ⚠️ 2026-10-16 与到店口径同步修正：单日时 start 为空会让「减0」，
-        //   交付数变成当月累计，与单日（当日）到店口径错配 -> 交付率失真。
-        //   单日取「当天快照 − 前一个数据日快照」= 当日新增交付。
+        // 基准快照 = 区间初（区间筛选）或当月前一个数据日（单日筛选）
         const prevSnap = start || (function () {
-          // 单日：找end 之前的最近一个数据日作为基准
           let p = null;
           for (const sd of snaps) if (sd < end) p = sd;
           return p;
         })();
-        const dS = prevSnap ? DELI.byDate[prevSnap] : null;
-        for (const si of cur.keys()) {
-          if (!deliStoreOK(si, baseline)) continue;
-          const code = DATA.stores[si][0];
-          if (dE[code] == null) continue;
-          cur.get(si).deli += (dE[code] || 0) - (dS && dS[code] != null ? (dS[code] || 0) : 0);
+        if (prevSnap) {
+          // 有基准 -> 做差得区间/当日新增交付
+          const dS = DELI.byDate[prevSnap] || null;
+          for (const si of cur.keys()) {
+            if (!deliStoreOK(si, baseline)) continue;
+            const code = DATA.stores[si][0];
+            if (dE[code] == null) continue;
+            cur.get(si).deli += (dE[code] || 0) - (dS && dS[code] != null ? (dS[code] || 0) : 0);
+          }
+        } else {
+          // 🔴 2026-10-17 修 bug：当月首个数据日（单日筛选，如 10-01）**没有同月基准**。
+          //   原代码 dS=null -> 减0 -> 交付数 = 当月累计值，
+          //   实测 10-01 显示 3,222 而当日实际仅 51（虚高 63 倍）。
+          //   正确口径：每月 1 号的文件仅含 1 号当天，故**直接取当日快照值**，
+          //   绝不能减上月最后一天（与新增潜客/到店的跨月铁律一致）。
+          for (const si of cur.keys()) {
+            if (!deliStoreOK(si, baseline)) continue;
+            const code = DATA.stores[si][0];
+            if (dE[code] == null) continue;
+            cur.get(si).deli += dE[code] || 0;
+          }
+          segInfo.push(key + '：交付为当月首日，直接取当日值（不跨月相减）');
         }
       }
     }
