@@ -2008,12 +2008,20 @@ function aggDeliStore(opt) {
       // 交付：同月「区间末快照 − 区间初快照」的差
       if (DELI && DELI.byDate && DELI.byDate[end]) {
         const dE = DELI.byDate[end];
-        // 基准快照 = 区间初（区间筛选）或当月前一个数据日（单日筛选）
-        const prevSnap = start || (function () {
+        // 🔴 2026-10-17 修 bug（山哥发现「整月交付一直是 51、很多店挂 0」）：
+        //   原写法 `prevSnap = start || (当月内 end 之前最后一个)`，那个兜底**不分场景**。
+        //   整月筛选（10-01~10-16）时 start 为 null（当月没有比1 号更早的数据日），
+        //   于是错误地掉进「单日兜底」，拿 10-15 当基准 →
+        //   交付数变成 10-16 **单日**新增（51），而整月应是 10-16 的**当月累计**（约 2 万+）。
+        //   正确：基准只由「区间形态」决定 ——
+        //     · 区间：基准 = start（月初起则为 null -> 减 0 = 当月累计，正确）
+        //     · 单日：基准 = 当月前一个数据日（= 当日新增）；若为首日则无基准 -> 直接取当日值
+        const isSingle = (a === b);
+        const prevSnap = isSingle ? (function () {
           let p = null;
           for (const sd of snaps) if (sd < end) p = sd;
           return p;
-        })();
+        })() : start;
         if (prevSnap) {
           // 有基准 -> 做差得区间/当日新增交付
           const dS = DELI.byDate[prevSnap] || null;
