@@ -1830,7 +1830,10 @@ function renderMgrCmp() {
 // 门店到店交付 · 统计范围：只看 零跑中心 / 城市展厅 / 商超店（剔除卫星店、社区店）
 // 注：社区店已在 build_data.py 的 EXCLUDE_ATTRS 层整店剔除，这里只需剔除卫星店。
 //     白名单式定义（而非黑名单），将来若新增其他店型，不会被误纳入。
-const DELI_ATTRS = ['零跑中心', '城市展厅', '商超店'];
+// ⚠️ 2026-10-18（用户裁定「算的」）：**卫星店纳入统计**。
+//     卫星店在两个数据源里都有数据（10-16：交付 78 人次；到店明细 21 家 / 655 个(门店,手机号)对），
+//     之前被白名单挡在外面。加入后门店数 106 → 137，排名基数同步变化（按大区全量口径计算）。
+const DELI_ATTRS = ['零跑中心', '城市展厅', '商超店', '卫星店'];
 // 交付数：订单表「新增交付」字段（build_data.py 注入 DATA.deli）
 // DATA.deli = {generated, source, month, date, byStore:{code:累计}, byDate:{date:{code:累计}}}
 const DELI = (typeof DATA !== 'undefined' && DATA.deli) || null;
@@ -2239,7 +2242,7 @@ function renderDeli() {
   const nV = nRankV, nD = nRankD;
   $('#deliScope').innerHTML = '统计区间 <b>' + (ST.d1 === ST.d2 ? ST.d1 : ST.d1 + ' ~ ' + ST.d2) +
     '</b> · 口径 <b>' + ((rows.months && rows.months.length) ? rows.months.join('+') : ST.d2.slice(0, 7)) + ' 当月累计值</b>' +
-    ' · 门店 <b>' + rows.length + '</b> 家（仅零跑中心/城市展厅/商超店）' +
+    ' · 门店 <b>' + rows.length + '</b> 家（零跑中心/城市展厅/商超店/卫星店）' +
     ' · 参与排名 <b>' + nV + '</b> / <b>' + nD + '</b> 家 · 排名范围 <b class="dl-muted">华南大区全量（不随筛选变化，当前筛选出 ' + rows.length + ' 家）</b>' +
     ' · 到店数口径 <b class="' + ((rows.visitFallback || rows.visitMixed || rows.visitPartial || visitStale()) ? 'dl-warn' : '') + '">' + (rows.visitSrc || '—') + '</b>'
     + (visitStale() ? ' <b class="dl-warn">⚠ 到店明细最新仅到 ' + visitLatest() + '，与所选数据日 ' + ST.d2 + ' 不一致</b>' : '')
