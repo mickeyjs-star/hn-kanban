@@ -403,6 +403,11 @@ tr.mc-sel{box-shadow:inset 4px 0 0 var(--pri)}
 #tbDeli td.d-tyty, #tbDeli th.d-tyty{background:#f6f2fe}
 #tbDeli thead th.d-tyty{background:#e4d9f7}
 #tbDeli tfoot td.d-tyty{background:#e6e0f8}
+/* 2026-10-18：到店类型 4 列可点击升降序 —— 光标/悬停反馈。
+   （此前虽已绑定 onclick，但没有可点击样式，用户看不出来能排序。） */
+#tbDeli thead th.d-tyty{cursor:pointer;user-select:none;transition:color .12s,background .12s}
+#tbDeli thead th.d-tyty:hover{color:var(--pri);background:#d6c6f4}
+#tbDeli thead th.d-tyty .ar{cursor:pointer}
 #tbDeli thead th.d-score{background:#d7f0df}
 #tbDeli th.grp{border-left:2px solid #dde3ec;text-align:center;letter-spacing:.5px}
 #tbDeli td.grp{border-left:2px solid #dde3ec}
@@ -2220,6 +2225,16 @@ function renderDeli() {
       const x = a[dlKey] == null ? 1e9 : a[dlKey], y = b[dlKey] == null ? 1e9 : b[dlKey];
       return (x - y) * dlDir;
     }
+    // 2026-10-18：到店类型 4 列（ty0~ty3）排序 —— 值在 a.ty[类型名] 里，不是 a[dlKey]
+    if (dlKey && dlKey.indexOf('ty') === 0) {
+      const tyName = VISIT_TYPES[+dlKey.slice(2)];
+      const x = (a.ty && a.ty[tyName] != null) ? a.ty[tyName] : null;
+      const y = (b.ty && b.ty[tyName] != null) ? b.ty[tyName] : null;
+      if (x == null && y == null) return a.name.localeCompare(b.name, 'zh');
+      if (x == null) return 1; if (y == null) return -1;
+      if (x === y) return a.name.localeCompare(b.name, 'zh');
+      return (x - y) * dlDir;
+    }
     const a2 = a[dlKey], b2 = b[dlKey];
     if (a2 == null && b2 == null) return a.name.localeCompare(b.name, 'zh');
     if (a2 == null) return 1; if (b2 == null) return -1;
@@ -2317,7 +2332,16 @@ function renderDeli() {
     th.onclick = () => {
       const k = th.dataset.k;
       if (dlKey === k) dlDir *= -1;
-      else { dlKey = k; dlDir = (k === 'name' || k === 'rm' || k === 'newLead' || k === 'visit' || k === 'deli' || k === 'rkV' || k === 'rkD') ? 1 : -1; }
+      else {
+        dlKey = k;
+        // 升序（1）的列：文本/绝对值类（小的在前）与排名类（名次小的在前）；
+        // 降序（-1）的列：率类（大的在前，即表现好）。
+        const asc = k === 'name' || k === 'rm' || k === 'newLead' || k === 'visit'
+          || k === 'deli' || k === 'rkV' || k === 'rkD' || k.indexOf('ty') === 0;
+        dlDir = asc ? 1 : -1;
+      }
+      // 到店类型 4 列（ty0~ty3）：绝对值列，与「到店数」一致 -> 首次点击升序（小的在前），
+      // 便于找「到店少但某类多」的店。与 visit 同行处理即可，此处仅注释说明。
       renderDeli();
     };
   });
