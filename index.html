@@ -2245,7 +2245,7 @@ function renderDeli() {
     '<th class="grp d-rank" colspan="1">排名（华南）</th>' +
     '<th class="grp d-tygrp" colspan="' + VISIT_TYPES.length + '">' +
       '到店类型（绝对值）' +
-      '<button class="ty-toggle" id="btnTyToggle" title="展开/收起「到店类型」4 列（默认收起）">展开 ▾</button>' +
+      '<button class="ty-toggle act" id="btnTyToggle" title="展开/收起「到店类型」4 列（默认展开）">收起 ▴</button>' +
     '</th>' +
     '<th class="grp d-deli" colspan="2">交付</th>' +
     '<th class="grp d-rank" colspan="1">排名（华南）</th>' +
@@ -2297,9 +2297,16 @@ function renderDeli() {
     '<td class="d-rank dl-muted">—</td>' +
     '</tr></tfoot>';
   tb.innerHTML = h;
-  // 2026-10-18：绑定「到店类型」列收起/展开（默认收起；切换后需重绘才能对齐 tfoot）
+  // 2026-10-18（用户要求「到店类型默认展开」）：**默认展开4 列**。
+  //   注意 tb.innerHTML = h 会重置表格内容，但**不会清掉 tb 上的 class**，
+  //   所以这里只需在每次渲染后保证 class 与按钮文案处于「展开」态即可。
+  //   收/展靠 class 切换（CSS display），无需重绘表格，tfoot 冻结不受影响。
+  tb.classList.add('show-ty');
   const tyBtn = $('#btnTyToggle');
   if (tyBtn) {
+    tyBtn.classList.add('act');
+    tyBtn.innerHTML = '收起 ▴';
+    tyBtn.title = '展开/收起「到店类型」4 列（默认展开）';
     tyBtn.onclick = function () {
       const on = tb.classList.toggle('show-ty');
       this.classList.toggle('act', on);
