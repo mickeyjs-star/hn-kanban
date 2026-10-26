@@ -363,7 +363,8 @@ tr.mc-sel{box-shadow:inset 4px 0 0 var(--pri)}
 /* ---------- 华南潜客到店率&到店交付率专项（新增模块） ---------- */
 #tbDeli{font-size:12px;table-layout:fixed;width:100%}
 #tbDeli th, #tbDeli td{padding:7px 6px}
-#tbDeli th:first-child{width:16%}
+#tbDeli th:first-child{width:13%}
+#tbDeli thead th.d-attr{width:8%}
 #tbDeli thead th{background:#fafbfc;color:var(--t2);font-weight:600;cursor:pointer;user-select:none;border-bottom:2px solid var(--line);white-space:normal;line-height:1.3;text-align:center}
 #tbDeli thead th:first-child{text-align:left}
 #tbDeli tbody td, #tbDeli tfoot td{text-align:center;white-space:nowrap}
@@ -408,6 +409,13 @@ tr.mc-sel{box-shadow:inset 4px 0 0 var(--pri)}
 #tbDeli thead th.d-tyty{cursor:pointer;user-select:none;transition:color .12s,background .12s}
 #tbDeli thead th.d-tyty:hover{color:var(--pri);background:#d6c6f4}
 #tbDeli thead th.d-tyty .ar{cursor:pointer}
+/* 2026-10-26：门店属性列（门店右侧：卫星店/零跑中心等）——中性淡灰、文本列、可点击排序 */
+#tbDeli td.d-attr, #tbDeli th.d-attr{background:#f6f8fa}
+#tbDeli thead th.d-attr{background:#eaeef3;text-align:left;white-space:nowrap}
+#tbDeli td.d-attr{text-align:center;color:var(--t2)}
+#tbDeli thead th.d-attr{cursor:pointer;user-select:none;transition:color .12s,background .12s}
+#tbDeli thead th.d-attr:hover{color:var(--pri);background:#dde6f2}
+#tbDeli thead th.d-attr .ar{cursor:pointer}
 #tbDeli thead th.d-score{background:#d7f0df}
 #tbDeli th.grp{border-left:2px solid #dde3ec;text-align:center;letter-spacing:.5px}
 #tbDeli td.grp{border-left:2px solid #dde3ec}
@@ -2221,6 +2229,8 @@ function renderDeli() {
   const arr = rows.slice().sort((a, b) => {
     if (dlKey === 'name') return a.name.localeCompare(b.name, 'zh') * dlDir;
     if (dlKey === 'rm') return (a.rm || '').localeCompare(b.rm || '', 'zh') * dlDir;
+    // 2026-10-26：门店属性列排序（文本列，按属性名 localeCompare）
+    if (dlKey === 'attr') return (a.attr || '').localeCompare(b.attr || '', 'zh') * dlDir;
     if (dlKey === 'rkV' || dlKey === 'rkD') {                 // 排名升序=好的在前
       const x = a[dlKey] == null ? 1e9 : a[dlKey], y = b[dlKey] == null ? 1e9 : b[dlKey];
       return (x - y) * dlDir;
@@ -2255,6 +2265,9 @@ function renderDeli() {
     '<th class="d-tyty" data-k="ty' + i + '">' + t + '<span class="ar" data-ar="ty' + i + '"></span></th>').join('');
   let h = '<thead><tr>' +
     '<th data-k="name" rowspan="2">门店</th>' +
+    // 2026-10-26 用户要求：门店右侧加「门店属性」列（卫星店/零跑中心等）。
+    //   与门店列一样 rowspan=2 单列，不破坏下面的分组 colspan 结构；支持点击排序。
+    '<th class="d-attr" data-k="attr" rowspan="2">门店属性<span class="ar" data-ar="attr"></span></th>' +
     '<th class="grp d-mgr" colspan="1">零售经理</th>' +
     '<th class="grp d-lead" colspan="3">潜客到店</th>' +
     '<th class="grp d-rank" colspan="1">排名（华南）</th>' +
@@ -2282,6 +2295,7 @@ function renderDeli() {
       return '<tr>' +
         '<td title="' + r.code + ' · ' + r.city + ' · ' + r.attr + ' · 零售经理 ' + r.rm +
                    ' · 新媒体 ' + (r.mm || '—') + ' · 市场 ' + (r.am || '—') + '">' + r.name + '</td>' +
+        '<td class="d-attr">' + (r.attr || '—') + '</td>' +
         '<td class="d-mgr dl-muted">' + (r.rm || '—') + '</td>' +
         '<td class="d-lead">' + fmt(r.newLead) + '</td>' +
         '<td class="d-lead">' + fmt(r.visit) + '</td>' +
@@ -2301,6 +2315,7 @@ function renderDeli() {
   for (const t of VISIT_TYPES) sTy[t] = rows.reduce((s, r) => s + (r.ty ? (r.ty[t] || 0) : 0), 0);
   const sTyCells = VISIT_TYPES.map(t => '<td class="d-tyty">' + fmt(sTy[t]) + '</td>').join('');
   h += '<tfoot><tr class="dl-total"><td>华南大区合计 / 整体</td>' +
+    '<td class="d-attr dl-muted">—</td>' +
     '<td class="d-mgr dl-muted">—</td>' +
     '<td class="d-lead">' + fmt(sL) + '</td>' +
     '<td class="d-lead">' + fmt(sV) + '</td>' +
@@ -2336,7 +2351,7 @@ function renderDeli() {
         dlKey = k;
         // 升序（1）的列：文本/绝对值类（小的在前）与排名类（名次小的在前）；
         // 降序（-1）的列：率类（大的在前，即表现好）。
-        const asc = k === 'name' || k === 'rm' || k === 'newLead' || k === 'visit'
+        const asc = k === 'name' || k === 'rm' || k === 'attr' || k === 'newLead' || k === 'visit'
           || k === 'deli' || k === 'rkV' || k === 'rkD' || k.indexOf('ty') === 0;
         dlDir = asc ? 1 : -1;
       }
