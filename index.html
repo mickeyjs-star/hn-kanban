@@ -394,6 +394,19 @@ tr.mc-sel{box-shadow:inset 4px 0 0 var(--pri)}
 #tbDeli td.d-score, #tbDeli th.d-score{background:#f0faf3}
 #tbDeli thead th.d-lead{background:#d9e7fb}
 #tbDeli thead th.d-deli{background:#ffe7d6}
+/* 1104 恢复：偏科指数 K 列（紫底）。K<0.93 标蓝（低K：到店多录/交付转化差）；K>4.27 标红（高K：到店少录/潜客到店率异常低）。
+   仅做标记，**不扣分、不影响名次**（用户 2026-11-04 裁定：扣分先不管）。 */
+#tbDeli td.d-bk, #tbDeli th.d-bk{background:#faf7ff}
+#tbDeli thead th.d-bk{background:#e9dffb}
+.dl-kv{display:inline-block;font-variant-numeric:tabular-nums;font-weight:600}
+.dl-kv.low{color:#0369a1}
+.dl-kv.high{color:#b91c1c}
+.dl-kv.ok{color:#475569}
+.dl-ktag{font-style:normal;font-size:10.5px;margin-left:2px;padding:0 3px;border-radius:3px;
+  font-weight:700;vertical-align:-1px}
+.dl-ktag.low{color:#0c4a6e;background:#dbeafe}
+.dl-ktag.high{color:#7f1d1d;background:#fee2e2}
+.dl-ktag.ok,.dl-ktag.na{display:none}
 /* 2026-10-18：到店类型 4 列（邀约/自然/非邀约/非邀约试驾）——默认收起，点分组表头里的按钮展开 */
 .ty-toggle{margin-left:8px;border:1px solid var(--line);background:#fff;border-radius:5px;
   padding:1px 7px;font-size:10.5px;cursor:pointer;color:var(--t2);font-family:inherit;vertical-align:middle}
@@ -644,6 +657,7 @@ tr.dl-tail td{box-shadow:inset 3px 0 0 #dc2626}
         <b>到店类型（4 类绝对值，可收起）</b>　取自明细 <b>J 列「到店类型」</b>，依次为邀约到店 / 自然到店 / 非邀约到店 / 非邀约试驾到店。<b class="dl-warn">各类型独立去重</b>——同一人在区间内既是邀约又是自然，两类各记 1 次，故<b>4 类之和 ≥ 到店总数</b>（非重复错误）。<br>
         <b>交付数</b>　取自订单表「新增交付」字段（10-04 起该字段才有）。单日 = 当日新增交付，区间 = 区间末快照 − 区间初快照。<br>
         <b>排名</b>　潜客到店率、到店交付率各按<b>华南大区内</b>排名（1 = 最好，附「名次/总数」）。<b class="dl-warn">名次固定为全华南基准</b> —— 切任何筛选都不变。<b>不计得分</b>。<br>
+        <b>偏科指数 K</b>　K = 到店锁单率 ÷ 潜客到店率 = (当月净增锁单 ÷ 当月到店数) ÷ (当月到店数 ÷ 当月新增潜客)，取<b>当月累计值</b>（锁单与到店<b>同口径</b>，不是当日增量）。<b>K &lt; 0.93 = 低K</b>（到店多录 / 交付转化差，标蓝）；<b>K &gt; 4.27 = 高K</b>（到店少录 / 潜客到店率异常低，标红）；0.93~4.27 为正常。<b class="dl-warn">仅标记，不扣分、不影响名次</b>——原规则「全国排名前后 10% 扣 10 分」需全国门店数据，暂未启用。<br>
         <b class="dl-warn">此口径仅用于本模块</b>——其余模块（渠道/趋势/门店明细等）到店数用源表「到店次数」，<b>两套口径不可混读或跨模块对比</b>。</div>
       <div class="tw"><table id="tbDeli"></table></div>
       </div>
@@ -1872,10 +1886,12 @@ const LOCK = (typeof DATA !== 'undefined' && DATA.lock) || null;
 
 const DELI_CFG = {
   K: {                     // 偏科指数（仅展示，不扣分）
-    enabled: false,        // 用户 2026-10-06：不算得分，故不触发
+    enabled: false,        // 用户 2026-11-04：先不扣分（全国排名数据未接入）
     cvThreshold: 0.20,
     tailPct: 0.10,
     deduct: 10,
+    lo: 0.93,              // 用户 2026-11-04 给定：K < 0.93 → 低K（到店多录 / 交付转化差）
+    hi: 4.27,              //                        K > 4.27 → 高K（到店少录 / 潜客到店率异常低）
   },
 };
 // 到店明细（零小跑）—— build_visit.py 产出、build_html.py 注入
@@ -2159,9 +2175,12 @@ function kSeries(code, baseline) {
       if (okS && !okS.has(normSeries(DATA.series[r[1]]))) continue;
       lead += r[2] || 0; visit += r[4] || 0;
     }
-    // 到店数与本模块其他列同口径：优先用零小跑明细（当日去重人数；缺则回当月累计去重）
-    if (VISIT_DAY && VISIT_DAY[d] && VISIT_DAY[d][code] != null) visit = VISIT_DAY[d][code] || 0;
-    else if (VISIT && VISIT[d] && VISIT[d][code] != null) visit = VISIT[d][code] || 0;
+    // ⚠️ 1104 口径修正（用户裁定）：K 的分子（锁单）与分母（到店）必须同口径，都是「当月累计」。
+    //   旧写法优先取 VISIT_DAY（当日去重、可跨日累加的人次），却除当月累计的锁单/潜客，
+    //   实测 K 中位数被放大到 679、最高 1.6 万，与全国口径 0.93~4.27 完全不可比。
+    //   现改为优先 VISIT（当月累计跨日去重人数），缺明细时才回落到当日。
+    if (VISIT && VISIT[d] && VISIT[d][code] != null) visit = VISIT[d][code] || 0;
+    else if (VISIT_DAY && VISIT_DAY[d] && VISIT_DAY[d][code] != null) visit = VISIT_DAY[d][code] || 0;
     const lock = bloc[code] || 0;
     if (!(visit > 0) || !(lead > 0)) continue;
     const rateVisit = visit / lead;
@@ -2190,6 +2209,32 @@ function calcK(baseline) {
     out.set(i, { k: k.last != null ? k.last : k.mean, cv: k.cv });
   }
   return out;
+}
+// 1104（用户给定规则）：K 值偏科判定 —— 只看绝对区间，**不扣分、不影响名次**。
+//   K < 0.93 → 低K：到店多录 / 交付转化差
+//   K > 4.27 → 高K：到店少录 / 潜客到店率异常低
+//   区间内 = 正常。原规则还有「全国排名前后 10% 才触发扣分、扣 10 分」，
+//   全国门店数据未接入，用户 11-04 明确「先不管」，故 deduct 保持 enabled:false。
+const K_LO = DELI_CFG.K.lo, K_HI = DELI_CFG.K.hi;
+function fmtK(v) {
+  if (v == null || !isFinite(v)) return '—';
+  if (v >= 100) return v.toFixed(0);
+  if (v >= 10) return v.toFixed(1);
+  return v.toFixed(2);
+}
+function kFlag(v) {
+  if (v == null || !isFinite(v) || !(v > 0)) return { cls: 'na', txt: '', tip: '无有效数据（到店数或新增潜客为 0）' };
+  // 判定与显示用同一精度（两位），避免「K 显示 0.93 却被标成低K」这种看着矛盾的边界情况
+  const r = Math.round(v * 100) / 100;
+  if (r < K_LO) return { cls: 'low', txt: '低', tip: '低K：到店多录 / 交付转化差（' + fmtK(v) + ' < ' + K_LO + '）' };
+  if (r > K_HI) return { cls: 'high', txt: '高', tip: '高K：到店少录 / 潜客到店率异常低（' + fmtK(v) + ' > ' + K_HI + '）' };
+  return { cls: 'ok', txt: '', tip: '正常：K 在 ' + K_LO + '~' + K_HI + ' 区间内' };
+}
+function kCell(v) {
+  if (v == null || !isFinite(v) || !(v > 0)) return '<span class="dl-pending" title="无有效数据">—</span>';
+  const f = kFlag(v);
+  return '<span class="dl-kv ' + f.cls + '" title="' + f.tip + '">' + fmtK(v) +
+         '<i class="dl-ktag ' + f.cls + '">' + f.txt + '</i></span>';
 }
 // 华南大区排名（1 = 最好）。仅在本模块筛选结果内排，不含全国。
 function rankAmong(rows, key, outKey) {
@@ -2282,6 +2327,7 @@ function renderDeli() {
     '</th>' +
     '<th class="grp d-deli" colspan="2">交付</th>' +
     '<th class="grp d-rank" colspan="1">排名（华南）</th>' +
+    '<th class="grp d-bk" colspan="1" title="K = 到店锁单率 ÷ 潜客到店率；0.93~4.27 视为正常，不扣分">偏科指数</th>' +
     '</tr><tr>' +
     '<th class="d-mgr" data-k="rm">零售经理<span class="ar" data-ar="rm"></span></th>' +
     '<th class="d-lead" data-k="newLead">当月新增潜客<span class="ar" data-ar="newLead"></span></th>' +
@@ -2292,7 +2338,8 @@ function renderDeli() {
     '<th class="d-deli" data-k="deli">当月交付数<span class="ar" data-ar="deli"></span></th>' +
     '<th class="d-deli" data-k="rateDeli">到店交付率<span class="ar" data-ar="rateDeli"></span></th>' +
     '<th class="d-rank" data-k="rkD">交付率名次<span class="ar" data-ar="rkD"></span></th>' +
-    // 2026-10-16 用户要求：删除「偏科指数 K值 / 波动CV」两列（纯参考列，不参与排名与得分）
+    // 1104 恢复：偏科指数 K 列（用户给定 0.93~4.27 区间判定；仍不扣分、不影响名次）
+    '<th class="d-bk" data-k="k" title="K = 到店锁单率 ÷ 潜客到店率。低于 0.93 = 低K（到店多录/交付转化差）；高于 4.27 = 高K（到店少录/潜客到店率异常低）；区间内为正常">偏科指数K<span class="ar" data-ar="k"></span></th>' +
     '</tr></thead><tbody>' + arr.map(r => {
       // 2026-10-18：4 类到店类型绝对值单元格
       const tyCells = VISIT_TYPES.map(t =>
@@ -2310,6 +2357,7 @@ function renderDeli() {
         '<td class="d-deli">' + (r.deli == null ? '<span class="dl-pending">无数据</span>' : fmt(r.deli)) + '</td>' +
         '<td class="d-deli">' + P2(r.rateDeli) + '</td>' +
         '<td class="d-rank">' + RK(r.rkD, r.rkDN) + '</td>' +
+        '<td class="d-bk">' + kCell(r.k) + '</td>' +
         '</tr>';
     }).join('') + '</tbody>';
   // 合计：率一律用全局分子/分母汇总法（严禁各门店率简单平均）
@@ -2319,6 +2367,17 @@ function renderDeli() {
   const sTy = {};
   for (const t of VISIT_TYPES) sTy[t] = rows.reduce((s, r) => s + (r.ty ? (r.ty[t] || 0) : 0), 0);
   const sTyCells = VISIT_TYPES.map(t => '<td class="d-tyty">' + fmt(sTy[t]) + '</td>').join('');
+  // 合计 K：同样用全局分子/分母汇总（Σ锁单 × Σ潜客 ÷ Σ到店²），严禁各店 K 简单平均
+  let sK = null;
+  if (LOCK && LOCK.byDate && LOCK.byDate[ST.d2] && sL > 0 && sV > 0) {
+    const lm = LOCK.byDate[ST.d2];
+    let sLk = 0, got = false;
+    for (const r of rows) {
+      const c = (DATA.stores[r.si] || [])[0];
+      if (c != null && lm[c] != null) { sLk += lm[c]; got = true; }
+    }
+    if (got) sK = (sLk * sL) / (sV * sV);
+  }
   h += '<tfoot><tr class="dl-total"><td>华南大区合计 / 整体</td>' +
     '<td class="d-attr dl-muted">—</td>' +
     '<td class="d-mgr dl-muted">—</td>' +
@@ -2330,6 +2389,7 @@ function renderDeli() {
     '<td class="d-deli">' + (sD == null ? '<span class="dl-pending">无数据</span>' : fmt(sD)) + '</td>' +
     '<td class="d-deli">' + (sD == null || !sV ? '<span class="dl-pending">—</span>' : (sD / sV * 100).toFixed(2) + '%') + '</td>' +
     '<td class="d-rank dl-muted">—</td>' +
+    '<td class="d-bk">' + kCell(sK) + '</td>' +
     '</tr></tfoot>';
   tb.innerHTML = h;
   // 2026-10-18（用户要求「到店类型默认展开」）：**默认展开4 列**。
