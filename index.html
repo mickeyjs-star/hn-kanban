@@ -3688,6 +3688,31 @@ $('#footNote').innerHTML =
   setupSCLazy();     // ① 渠道明细懒渲染：render 后布局成型再判断是否在首屏
 })();
 </script>
+<!-- ⚠ 临时数据公告（2026-11-15 加）：11-14 潜客 BI 数据异常（日增仅 74），
+     暂用 11-13 数据。源系统修复后重新运行 update.py 生成新文件，本公告自然消失。 -->
+<div id="bizNotice" role="dialog" aria-modal="true" style="position:fixed;inset:0;z-index:99998;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:24px;">
+  <div style="background:#fff;border-radius:14px;width:100%;max-width:470px;box-shadow:0 24px 64px rgba(15,23,42,.28);overflow:hidden;">
+    <div style="background:#2563eb;color:#fff;padding:16px 22px;font-size:17px;font-weight:600;letter-spacing:.5px;">📢 数据更新说明</div>
+    <div style="padding:22px 24px 10px;font-size:16px;line-height:1.85;color:#1e293b;">
+      因门店潜客 BI 数据问题，当前数据截止 <b style="color:#dc2626;">11月13日</b>，<br>
+      11月14日数据预计 <b style="color:#2563eb;">11月16日（周一）</b> 更新。
+    </div>
+    <div style="padding:10px 24px 22px;text-align:right;">
+      <button id="bizNoticeClose" style="background:#2563eb;color:#fff;border:0;border-radius:8px;padding:10px 26px;font-size:16px;font-weight:500;cursor:pointer;font-family:inherit;">知道了</button>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var ov = document.getElementById('bizNotice');
+  if (!ov) return;
+  function close() { ov.style.display = 'none'; }
+  var b = document.getElementById('bizNoticeClose');
+  if (b) b.addEventListener('click', close);
+  ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+})();
+</script>
 </body>
 </html>
 
