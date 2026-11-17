@@ -1454,6 +1454,27 @@ function renderTrend() {
     if (cnCur) cnCur.forEach((p, i) =>
       s += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(val(p.v, g)).toFixed(1) + '" r="2" fill="#fff" stroke="#475569" stroke-width="1.3"/>');
   });
+  /* 单渠道时画一条「日均」参考虚线（2026-11-17 用户要求）。
+     只在该渠道被单独筛选（trendCh≠all）时出现——多渠道时各线平均值的含义不清晰。
+     取当前指标各日的算术平均；若所选区间跨月，标签从「月均」改成「区间日均」。
+     文字加白色描边（paint-order），压到数据点上也能看清。 */
+  if (single) {
+    const g0 = vis[0];
+    if (g0) {
+      const vs = cur.map(p => val(p.v, g0)).filter(v => v != null && isFinite(v));
+      if (vs.length) {
+        const avg = vs.reduce((a, b) => a + b, 0) / vs.length;
+        const ya = Y(avg);
+        const sameM = cur[0].date.slice(0, 7) === cur[n - 1].date.slice(0, 7);
+        const avgTxt = (sameM ? '月均 ' : '区间日均 ') +
+          (metric === 'rate' ? avg.toFixed(1) + '%' : fmt(Math.round(avg)));
+        s += '<line x1="' + PL + '" y1="' + ya.toFixed(1) + '" x2="' + (W - PR) + '" y2="' + ya.toFixed(1) +
+             '" stroke="#64748b" stroke-width="1.5" stroke-dasharray="7 5" opacity=".75"/>';
+        s += '<text x="' + (PL + 4) + '" y="' + (ya - 7).toFixed(1) + '" fill="#475569" font-size="11" font-weight="600"' +
+             ' paint-order="stroke" stroke="#fff" stroke-width="3" stroke-linejoin="round">' + avgTxt + '</text>';
+      }
+    }
+  }
   cur.forEach((p, i) => s += '<rect class="hv" data-i="' + i + '" x="' + (X(i) - (W - PL - PR) / (2 * Math.max(1, n - 1))) +
     '" y="' + PT + '" width="' + ((W - PL - PR) / Math.max(1, n - 1)) + '" height="' + (H - PT - PB) + '" fill="transparent"/>');
   $('#chart').innerHTML = s;
